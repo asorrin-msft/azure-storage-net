@@ -435,6 +435,112 @@ namespace Microsoft.WindowsAzure.Storage.Core.Util
 
             return taskCompletionSource.Task;
         }
+
+        // Copied from https://msdn.microsoft.com/en-us/library/hh873178.aspx
+        internal static IAsyncResult AsApm<T>(this Task<T> task,
+                                    AsyncCallback callback,
+                                    object state)
+        {
+            if (task == null)
+                throw new ArgumentNullException("task");
+
+            var tcs = new TaskCompletionSource<T>(state);
+            task.ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    tcs.TrySetException(t.Exception.InnerExceptions);
+                else if (t.IsCanceled)
+                    tcs.TrySetCanceled();
+                else
+                    tcs.TrySetResult(t.Result);
+
+                if (callback != null)
+                    callback(tcs.Task);
+            }, TaskScheduler.Default);
+            return tcs.Task;
+        }
+
+        internal static IAsyncResult AsApm(this Task task,
+                            AsyncCallback callback,
+                            object state)
+        {
+            if (task == null)
+                throw new ArgumentNullException("task");
+
+            var tcs = new TaskCompletionSource<object>(state);
+            task.ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    tcs.TrySetException(t.Exception.InnerExceptions);
+                else if (t.IsCanceled)
+                    tcs.TrySetCanceled();
+                else
+                    tcs.TrySetResult(null);
+
+                if (callback != null)
+                    callback(tcs.Task);
+            }, TaskScheduler.Default);
+            return tcs.Task;
+        }
+
+        // Copied from http://blogs.msdn.com/b/pfxteam/archive/2010/11/21/10094564.aspx
+        internal static Task<T2> Then<T1, T2>(this Task<T1> first, Func<T1, Task<T2>> next)
+        {
+            if (first == null) throw new ArgumentNullException("first");
+            if (next == null) throw new ArgumentNullException("next");
+
+            var tcs = new TaskCompletionSource<T2>();
+            first.ContinueWith(delegate
+            {
+                if (first.IsFaulted) tcs.TrySetException(first.Exception.InnerExceptions);
+                else if (first.IsCanceled) tcs.TrySetCanceled();
+                else
+                {
+                    try
+                    {
+                        var t = next(first.Result);
+                        if (t == null) tcs.TrySetCanceled();
+                        else t.ContinueWith(delegate
+                        {
+                            if (t.IsFaulted) tcs.TrySetException(t.Exception.InnerExceptions);
+                            else if (t.IsCanceled) tcs.TrySetCanceled();
+                            else tcs.TrySetResult(t.Result);
+                        }, TaskContinuationOptions.ExecuteSynchronously);
+                    }
+                    catch (Exception exc) { tcs.TrySetException(exc); }
+                }
+            }, TaskContinuationOptions.ExecuteSynchronously);
+            return tcs.Task;
+        }
+
+        internal static Task Then<T1>(this Task<T1> first, Func<T1, Task> next)
+        {
+            if (first == null) throw new ArgumentNullException("first");
+            if (next == null) throw new ArgumentNullException("next");
+
+            var tcs = new TaskCompletionSource<object>();
+            first.ContinueWith(delegate
+            {
+                if (first.IsFaulted) tcs.TrySetException(first.Exception.InnerExceptions);
+                else if (first.IsCanceled) tcs.TrySetCanceled();
+                else
+                {
+                    try
+                    {
+                        var t = next(first.Result);
+                        if (t == null) tcs.TrySetCanceled();
+                        else t.ContinueWith(delegate
+                        {
+                            if (t.IsFaulted) tcs.TrySetException(t.Exception.InnerExceptions);
+                            else if (t.IsCanceled) tcs.TrySetCanceled();
+                            else tcs.TrySetResult(null);
+                        }, TaskContinuationOptions.ExecuteSynchronously);
+                    }
+                    catch (Exception exc) { tcs.TrySetException(exc); }
+                }
+            }, TaskContinuationOptions.ExecuteSynchronously);
+            return tcs.Task;
+        }
     }
 #endif
 }
