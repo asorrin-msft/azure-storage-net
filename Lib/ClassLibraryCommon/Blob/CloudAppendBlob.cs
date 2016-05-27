@@ -650,63 +650,63 @@ namespace Microsoft.WindowsAzure.Storage.Blob
                 {
                     storageAsyncResult.UpdateCompletedSynchronously(ar.CompletedSynchronously);
 
-                    lock (storageAsyncResult.CancellationLockerObject)
+                    storageAsyncResult.CancelDelegate = null;
+                    try
                     {
-                        storageAsyncResult.CancelDelegate = null;
-                        try
-                        {
-                            CloudBlobStream blobStream = this.EndOpenWrite(ar);
-                            storageAsyncResult.OperationState = blobStream;
+                        CloudBlobStream blobStream = this.EndOpenWrite(ar);
+                        storageAsyncResult.OperationState = blobStream;
 
-                            source.WriteToAsync(
-                                blobStream,
-                                length,
-                                null /* maxLength */,
-                                false,
-                                tempExecutionState,
-                                null /* streamCopyState */,
-                                completedState =>
+                        source.WriteToAsync(
+                            blobStream,
+                            length,
+                            null /* maxLength */,
+                            false,
+                            tempExecutionState,
+                            null /* streamCopyState */,
+                            completedState =>
+                            {
+                                storageAsyncResult.UpdateCompletedSynchronously(completedState.CompletedSynchronously);
+                                if (completedState.ExceptionRef != null)
                                 {
-                                    storageAsyncResult.UpdateCompletedSynchronously(completedState.CompletedSynchronously);
-                                    if (completedState.ExceptionRef != null)
+                                    storageAsyncResult.OnComplete(completedState.ExceptionRef);
+                                }
+                                else
+                                {
+                                    try
                                     {
-                                        storageAsyncResult.OnComplete(completedState.ExceptionRef);
-                                    }
-                                    else
-                                    {
-                                        try
-                                        {
-                                            lock (storageAsyncResult.CancellationLockerObject)
-                                            {
-                                                storageAsyncResult.CancelDelegate = null;
-                                                ICancellableAsyncResult commitResult = blobStream.BeginCommit(
-                                                        CloudBlob.BlobOutputStreamCommitCallback,
-                                                        storageAsyncResult);
+                                        storageAsyncResult.CancelDelegate = null;
+                                        ICancellableAsyncResult commitResult = blobStream.BeginCommit(
+                                                CloudBlob.BlobOutputStreamCommitCallback,
+                                                storageAsyncResult);
 
-                                                storageAsyncResult.CancelDelegate = commitResult.Cancel;
-                                                if (storageAsyncResult.CancelRequested)
-                                                {
-                                                    storageAsyncResult.Cancel();
-                                                }
+                                        lock (storageAsyncResult.CancellationLockerObject)
+                                        {
+                                            storageAsyncResult.CancelDelegate = commitResult.Cancel;
+                                            if (storageAsyncResult.CancelRequested)
+                                            {
+                                                storageAsyncResult.Cancel();
                                             }
                                         }
-                                        catch (Exception e)
-                                        {
-                                            storageAsyncResult.OnComplete(e);
-                                        }
                                     }
-                                });
+                                    catch (Exception e)
+                                    {
+                                        storageAsyncResult.OnComplete(e);
+                                    }
+                                }
+                            });
 
+                        lock (storageAsyncResult.CancellationLockerObject)
+                        {
                             storageAsyncResult.CancelDelegate = tempExecutionState.Cancel;
                             if (storageAsyncResult.CancelRequested)
                             {
                                 storageAsyncResult.Cancel();
                             }
                         }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
-                        }
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
                     }
                 },
                 null /* state */);
@@ -2287,28 +2287,28 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Reviewed.")]
         private void AppendBlockHandler(Stream blockData, string contentMD5, AccessCondition accessCondition, BlobRequestOptions options, OperationContext operationContext, StorageAsyncResult<long> storageAsyncResult)
         {
+            ICancellableAsyncResult result = Executor.BeginExecuteAsync(
+                this.AppendBlockImpl(blockData, contentMD5, accessCondition, options),
+                options.RetryPolicy,
+                operationContext,
+                ar =>
+                {
+                    storageAsyncResult.UpdateCompletedSynchronously(ar.CompletedSynchronously);
+
+                    try
+                    {
+                        storageAsyncResult.Result = Executor.EndExecuteAsync<long>(ar);
+                        storageAsyncResult.OnComplete();
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
+                    }
+                },
+                null /* asyncState */);
+
             lock (storageAsyncResult.CancellationLockerObject)
             {
-                ICancellableAsyncResult result = Executor.BeginExecuteAsync(
-                    this.AppendBlockImpl(blockData, contentMD5, accessCondition, options),
-                    options.RetryPolicy,
-                    operationContext,
-                    ar =>
-                    {
-                        storageAsyncResult.UpdateCompletedSynchronously(ar.CompletedSynchronously);
-
-                        try
-                        {
-                            storageAsyncResult.Result = Executor.EndExecuteAsync<long>(ar);
-                            storageAsyncResult.OnComplete();
-                        }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
-                        }
-                    },
-                    null /* asyncState */);
-
                 storageAsyncResult.CancelDelegate = result.Cancel;
                 if (storageAsyncResult.CancelRequested)
                 {

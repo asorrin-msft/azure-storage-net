@@ -827,7 +827,7 @@ namespace Microsoft.WindowsAzure.Storage.File
         /// <param name="options">A <see cref="FileRequestOptions"/> object that specifies additional options for the request.</param>
         /// <param name="operationContext">An <see cref="OperationContext"/> object that represents the context for the current operation.</param>
         /// <returns>The contents of the file, as a string.</returns>
-        [DoesServiceRequest]        
+        [DoesServiceRequest]
         public virtual string DownloadText(Encoding encoding = null, AccessCondition accessCondition = null, FileRequestOptions options = null, OperationContext operationContext = null)
         {
             using (SyncMemoryStream stream = new SyncMemoryStream())
@@ -1443,64 +1443,63 @@ namespace Microsoft.WindowsAzure.Storage.File
                 ar =>
                 {
                     storageAsyncResult.UpdateCompletedSynchronously(ar.CompletedSynchronously);
-
-                    lock (storageAsyncResult.CancellationLockerObject)
+                    storageAsyncResult.CancelDelegate = null;
+                    try
                     {
-                        storageAsyncResult.CancelDelegate = null;
-                        try
-                        {
-                            CloudFileStream fileStream = this.EndOpenWrite(ar);
-                            storageAsyncResult.OperationState = fileStream;
+                        CloudFileStream fileStream = this.EndOpenWrite(ar);
+                        storageAsyncResult.OperationState = fileStream;
 
-                            source.WriteToAsync(
-                                fileStream,
-                                length,
-                                null /* maxLength */,
-                                false,
-                                tempExecutionState,
-                                null /* streamCopyState */,
-                                completedState =>
+                        source.WriteToAsync(
+                            fileStream,
+                            length,
+                            null /* maxLength */,
+                            false,
+                            tempExecutionState,
+                            null /* streamCopyState */,
+                            completedState =>
+                            {
+                                storageAsyncResult.UpdateCompletedSynchronously(completedState.CompletedSynchronously);
+                                if (completedState.ExceptionRef != null)
                                 {
-                                    storageAsyncResult.UpdateCompletedSynchronously(completedState.CompletedSynchronously);
-                                    if (completedState.ExceptionRef != null)
+                                    storageAsyncResult.OnComplete(completedState.ExceptionRef);
+                                }
+                                else
+                                {
+                                    try
                                     {
-                                        storageAsyncResult.OnComplete(completedState.ExceptionRef);
-                                    }
-                                    else
-                                    {
-                                        try
-                                        {
-                                            lock (storageAsyncResult.CancellationLockerObject)
-                                            {
-                                                storageAsyncResult.CancelDelegate = null;
-                                                ICancellableAsyncResult commitResult = fileStream.BeginCommit(
-                                                        CloudFile.FileStreamCommitCallback,
-                                                        storageAsyncResult);
+                                        storageAsyncResult.CancelDelegate = null;
+                                        ICancellableAsyncResult commitResult = fileStream.BeginCommit(
+                                                CloudFile.FileStreamCommitCallback,
+                                                storageAsyncResult);
 
-                                                storageAsyncResult.CancelDelegate = commitResult.Cancel;
-                                                if (storageAsyncResult.CancelRequested)
-                                                {
-                                                    storageAsyncResult.Cancel();
-                                                }
+                                        lock (storageAsyncResult.CancellationLockerObject)
+                                        {
+                                            storageAsyncResult.CancelDelegate = commitResult.Cancel;
+                                            if (storageAsyncResult.CancelRequested)
+                                            {
+                                                storageAsyncResult.Cancel();
                                             }
                                         }
-                                        catch (Exception e)
-                                        {
-                                            storageAsyncResult.OnComplete(e);
-                                        }
                                     }
-                                });
+                                    catch (Exception e)
+                                    {
+                                        storageAsyncResult.OnComplete(e);
+                                    }
+                                }
+                            });
 
+                        lock (storageAsyncResult.CancellationLockerObject)
+                        {
                             storageAsyncResult.CancelDelegate = tempExecutionState.Cancel;
                             if (storageAsyncResult.CancelRequested)
                             {
                                 storageAsyncResult.Cancel();
                             }
                         }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
-                        }
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
                     }
                 },
                 null /* state */);
@@ -2579,22 +2578,14 @@ namespace Microsoft.WindowsAzure.Storage.File
                 existsResult =>
                 {
                     storageAsyncResult.UpdateCompletedSynchronously(existsResult.CompletedSynchronously);
-                    lock (storageAsyncResult.CancellationLockerObject)
+                    storageAsyncResult.CancelDelegate = null;
+                    try
                     {
-                        storageAsyncResult.CancelDelegate = null;
-                        try
+                        bool exists = this.EndExists(existsResult);
+                        if (!exists)
                         {
-                            bool exists = this.EndExists(existsResult);
-                            if (!exists)
-                            {
-                                storageAsyncResult.Result = false;
-                                storageAsyncResult.OnComplete();
-                                return;
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
+                            storageAsyncResult.Result = false;
+                            storageAsyncResult.OnComplete();
                             return;
                         }
 
@@ -2639,11 +2630,19 @@ namespace Microsoft.WindowsAzure.Storage.File
                             },
                             null /* state */);
 
-                        storageAsyncResult.CancelDelegate = savedDeleteResult.Cancel;
-                        if (storageAsyncResult.CancelRequested)
+                        lock (storageAsyncResult.CancellationLockerObject)
                         {
-                            storageAsyncResult.Cancel();
+                            storageAsyncResult.CancelDelegate = savedDeleteResult.Cancel;
+                            if (storageAsyncResult.CancelRequested)
+                            {
+                                storageAsyncResult.Cancel();
+                            }
                         }
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
+                        return;
                     }
                 },
                 null /* state */);
@@ -3320,13 +3319,20 @@ namespace Microsoft.WindowsAzure.Storage.File
                         }
                         else
                         {
-                            if (requiresContentMD5)
+                            try
                             {
-                                contentMD5 = streamCopyState.Md5;
-                            }
+                                if (requiresContentMD5)
+                                {
+                                    contentMD5 = streamCopyState.Md5;
+                                }
 
-                            seekableStream.Position = startPosition;
-                            this.WriteRangeHandler(seekableStream, startOffset, contentMD5, accessCondition, modifiedOptions, operationContext, storageAsyncResult);
+                                seekableStream.Position = startPosition;
+                                this.WriteRangeHandler(seekableStream, startOffset, contentMD5, accessCondition, modifiedOptions, operationContext, storageAsyncResult);
+                            }
+                            catch (Exception e)
+                            {
+                                storageAsyncResult.OnComplete(e);
+                            }
                         }
                     });
             }
@@ -3336,28 +3342,28 @@ namespace Microsoft.WindowsAzure.Storage.File
 
         private void WriteRangeHandler(Stream rangeData, long startOffset, string contentMD5, AccessCondition accessCondition, FileRequestOptions options, OperationContext operationContext, StorageAsyncResult<NullType> storageAsyncResult)
         {
+            ICancellableAsyncResult result = Executor.BeginExecuteAsync(
+                this.PutRangeImpl(rangeData, startOffset, contentMD5, accessCondition, options),
+                options.RetryPolicy,
+                operationContext,
+                ar =>
+                {
+                    storageAsyncResult.UpdateCompletedSynchronously(ar.CompletedSynchronously);
+
+                    try
+                    {
+                        Executor.EndExecuteAsync<NullType>(ar);
+                        storageAsyncResult.OnComplete();
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
+                    }
+                },
+                null /* asyncState */);
+
             lock (storageAsyncResult.CancellationLockerObject)
             {
-                ICancellableAsyncResult result = Executor.BeginExecuteAsync(
-                    this.PutRangeImpl(rangeData, startOffset, contentMD5, accessCondition, options),
-                    options.RetryPolicy,
-                    operationContext,
-                    ar =>
-                    {
-                        storageAsyncResult.UpdateCompletedSynchronously(ar.CompletedSynchronously);
-
-                        try
-                        {
-                            Executor.EndExecuteAsync<NullType>(ar);
-                            storageAsyncResult.OnComplete();
-                        }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
-                        }
-                    },
-                    null /* asyncState */);
-
                 storageAsyncResult.CancelDelegate = result.Cancel;
                 if (storageAsyncResult.CancelRequested)
                 {
@@ -3596,7 +3602,7 @@ namespace Microsoft.WindowsAzure.Storage.File
         public virtual string StartCopy(Uri source, AccessCondition sourceAccessCondition = null, AccessCondition destAccessCondition = null, FileRequestOptions options = null, OperationContext operationContext = null)
         {
             CommonUtility.AssertNotNull("source", source);
-            
+
             FileRequestOptions modifiedOptions = FileRequestOptions.ApplyDefaults(options, this.ServiceClient);
             return Executor.ExecuteSync(
                 this.StartCopyImpl(source, sourceAccessCondition, destAccessCondition, modifiedOptions),
@@ -3697,7 +3703,7 @@ namespace Microsoft.WindowsAzure.Storage.File
         public virtual ICancellableAsyncResult BeginStartCopy(Uri source, AccessCondition sourceAccessCondition, AccessCondition destAccessCondition, FileRequestOptions options, OperationContext operationContext, AsyncCallback callback, object state)
         {
             CommonUtility.AssertNotNull("source", source);
-            
+
             FileRequestOptions modifiedOptions = FileRequestOptions.ApplyDefaults(options, this.ServiceClient);
             return Executor.BeginExecuteAsync(
                 this.StartCopyImpl(source, sourceAccessCondition, destAccessCondition, modifiedOptions),
@@ -4538,7 +4544,7 @@ namespace Microsoft.WindowsAzure.Storage.File
         {
             FileProperties properties = FileHttpResponseParsers.GetProperties(response);
             CopyState state = FileHttpResponseParsers.GetCopyAttributes(response);
-            
+
             if (ignoreMD5)
             {
                 properties.ContentMD5 = this.attributes.Properties.ContentMD5;

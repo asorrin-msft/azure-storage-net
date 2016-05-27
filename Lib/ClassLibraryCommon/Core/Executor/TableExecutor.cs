@@ -84,115 +84,133 @@ namespace Microsoft.WindowsAzure.Storage.Core.Executor
                     return;
                 }
 
+                bool callEnd = false;
                 lock (executionState.CancellationLockerObject)
                 {
                     if (TableExecutor.CheckCancellation(executionState))
                     {
-                        TableExecutor.EndOperation<T, INTERMEDIATE_TYPE>(executionState);
-                        return;
+                        callEnd = true;
                     }
+                }
+                if (callEnd)
+                {
+                    TableExecutor.EndOperation<T, INTERMEDIATE_TYPE>(executionState);
+                    return;
+                }
 
-                    TableCommand<T, INTERMEDIATE_TYPE> tableCommandRef = executionState.Cmd as TableCommand<T, INTERMEDIATE_TYPE>;
+                TableCommand<T, INTERMEDIATE_TYPE> tableCommandRef = executionState.Cmd as TableCommand<T, INTERMEDIATE_TYPE>;
 
-                    // Execute Call
-                    Logger.LogInformational(executionState.OperationContext, SR.TraceStartRequestAsync, tableCommandRef.Context.BaseUri);
-                    tableCommandRef.Begin(
-                        (res) =>
+                // Execute Call
+                Logger.LogInformational(executionState.OperationContext, SR.TraceStartRequestAsync, tableCommandRef.Context.BaseUri);
+                tableCommandRef.Begin(
+                    (res) =>
+                    {
+                        executionState.UpdateCompletedSynchronously(res.CompletedSynchronously);
+                        INTERMEDIATE_TYPE tResult = default(INTERMEDIATE_TYPE);
+
+                        try
                         {
-                            executionState.UpdateCompletedSynchronously(res.CompletedSynchronously);
-                            INTERMEDIATE_TYPE tResult = default(INTERMEDIATE_TYPE);
+                            tResult = tableCommandRef.End(res);
 
-                            try
+                            executionState.Result = tableCommandRef.ParseResponse(tResult, executionState.Cmd.CurrentResult, tableCommandRef);
+
+                            if (executionState.Req != null)
                             {
-                                tResult = tableCommandRef.End(res);
+                                DataServiceResponse dataServiceResponse = tResult as DataServiceResponse;
+                                QueryOperationResponse queryResponse = tResult as QueryOperationResponse;
 
-                                executionState.Result = tableCommandRef.ParseResponse(tResult, executionState.Cmd.CurrentResult, tableCommandRef);
-
-                                if (executionState.Req != null)
+                                if (dataServiceResponse != null)
                                 {
-                                    DataServiceResponse dataServiceResponse = tResult as DataServiceResponse;
-                                    QueryOperationResponse queryResponse = tResult as QueryOperationResponse;
-
-                                    if (dataServiceResponse != null)
+                                    if (dataServiceResponse.IsBatchResponse)
                                     {
-                                        if (dataServiceResponse.IsBatchResponse)
-                                        {
                                             // Attempt to populate response headers
                                             if (executionState.Req != null)
-                                            {
-                                                SetExecutionStateCommandResult(executionState, dataServiceResponse);
-                                                Logger.LogInformational(executionState.OperationContext, SR.TraceResponse, executionState.Cmd.CurrentResult.HttpStatusCode, executionState.Cmd.CurrentResult.ServiceRequestID, executionState.Cmd.CurrentResult.ContentMd5, executionState.Cmd.CurrentResult.Etag);
-                                            }
-                                        }
-                                        else
                                         {
-                                            int index = 0;
-                                            foreach (OperationResponse operationResponse in dataServiceResponse)
-                                            {
-                                                // Attempt to populate response headers
-                                                if (executionState.Req != null)
-                                                {
-                                                    SetStorageCmdRequestResults(executionState.Cmd.RequestResults.ElementAt(index), operationResponse);
-                                                    Logger.LogInformational(executionState.OperationContext, SR.TraceResponse, executionState.Cmd.RequestResults.ElementAt(index).HttpStatusCode, executionState.Cmd.RequestResults.ElementAt(index).ServiceRequestID, executionState.Cmd.RequestResults.ElementAt(index).ContentMd5, executionState.Cmd.RequestResults.ElementAt(index).Etag);
-                                                    index++;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else if (queryResponse != null)
-                                    {
-                                        // Attempt to populate response headers
-                                        if (executionState.Req != null)
-                                        {
-                                            SetStorageCmdRequestResults(executionState.Cmd.CurrentResult, queryResponse);
+                                            SetExecutionStateCommandResult(executionState, dataServiceResponse);
                                             Logger.LogInformational(executionState.OperationContext, SR.TraceResponse, executionState.Cmd.CurrentResult.HttpStatusCode, executionState.Cmd.CurrentResult.ServiceRequestID, executionState.Cmd.CurrentResult.ContentMd5, executionState.Cmd.CurrentResult.Etag);
                                         }
                                     }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.LogWarning(executionState.OperationContext, SR.TraceGenericError, ex.Message);
-
-                                lock (executionState.CancellationLockerObject)
-                                {
-                                    if (executionState.CancelRequested)
+                                    else
                                     {
-                                        // Ignore DSC exception if request was canceled.
-                                        return;
+                                        int index = 0;
+                                        foreach (OperationResponse operationResponse in dataServiceResponse)
+                                        {
+                                                // Attempt to populate response headers
+                                                if (executionState.Req != null)
+                                            {
+                                                SetStorageCmdRequestResults(executionState.Cmd.RequestResults.ElementAt(index), operationResponse);
+                                                Logger.LogInformational(executionState.OperationContext, SR.TraceResponse, executionState.Cmd.RequestResults.ElementAt(index).HttpStatusCode, executionState.Cmd.RequestResults.ElementAt(index).ServiceRequestID, executionState.Cmd.RequestResults.ElementAt(index).ContentMd5, executionState.Cmd.RequestResults.ElementAt(index).Etag);
+                                                index++;
+                                            }
+                                        }
                                     }
                                 }
+                                else if (queryResponse != null)
+                                {
+                                        // Attempt to populate response headers
+                                        if (executionState.Req != null)
+                                    {
+                                        SetStorageCmdRequestResults(executionState.Cmd.CurrentResult, queryResponse);
+                                        Logger.LogInformational(executionState.OperationContext, SR.TraceResponse, executionState.Cmd.CurrentResult.HttpStatusCode, executionState.Cmd.CurrentResult.ServiceRequestID, executionState.Cmd.CurrentResult.ContentMd5, executionState.Cmd.CurrentResult.Etag);
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogWarning(executionState.OperationContext, SR.TraceGenericError, ex.Message);
+
+                            lock (executionState.CancellationLockerObject)
+                            {
+                                if (executionState.CancelRequested)
+                                {
+                                        // Ignore DSC exception if request was canceled.
+                                        return;
+                                }
+                            }
 
                                 // Store exception and invoke callback here. All operations in this try would be non-retryable by default
                                 if (executionState.ExceptionRef == null || !(executionState.ExceptionRef is StorageException))
-                                {
-                                    executionState.ExceptionRef = ExecutorBase.TranslateDataServiceExceptionBasedOnParseError(ex, executionState.Cmd.CurrentResult, executionState.Cmd.ParseDataServiceError);
-                                }
+                            {
+                                executionState.ExceptionRef = ExecutorBase.TranslateDataServiceExceptionBasedOnParseError(ex, executionState.Cmd.CurrentResult, executionState.Cmd.ParseDataServiceError);
+                            }
 
-                                try
-                                {
-                                    executionState.Result = tableCommandRef.ParseResponse(tResult, executionState.Cmd.CurrentResult, tableCommandRef);
+                            try
+                            {
+                                executionState.Result = tableCommandRef.ParseResponse(tResult, executionState.Cmd.CurrentResult, tableCommandRef);
 
                                     // clear exception
                                     executionState.ExceptionRef = null;
-                                }
-                                catch (Exception parseEx)
-                                {
-                                    Logger.LogWarning(executionState.OperationContext, SR.TraceGenericError, ex.Message);
-                                    executionState.ExceptionRef = parseEx;
-                                }
                             }
-                            finally
+                            catch (Exception parseEx)
                             {
-                                EndOperation<T, INTERMEDIATE_TYPE>(executionState);
+                                Logger.LogWarning(executionState.OperationContext, SR.TraceGenericError, ex.Message);
+                                executionState.ExceptionRef = parseEx;
                             }
-                        },
-                        null);
+                        }
+                        finally
+                        {
+                            EndOperation<T, INTERMEDIATE_TYPE>(executionState);
+                        }
+                    },
+                    null);
 
-                    if (tableCommandRef.Context != null)
+                callEnd = false;
+                lock (executionState.CancellationLockerObject)
+                {
+                    if (TableExecutor.CheckCancellation(executionState))
+                    {
+                        callEnd = true;
+                    }
+                    else if (tableCommandRef.Context != null)
                     {
                         executionState.CancelDelegate = tableCommandRef.Context.InternalCancel;
                     }
+                }
+                if (callEnd)
+                {
+                    TableExecutor.EndOperation<T, INTERMEDIATE_TYPE>(executionState);
+                    return;
                 }
             }
             catch (Exception ex)
@@ -219,23 +237,22 @@ namespace Microsoft.WindowsAzure.Storage.Core.Executor
             lock (executionState.CancellationLockerObject)
             {
                 executionState.CancelDelegate = null;
-
                 TableExecutor.CheckCancellation(executionState);
+            }
 
-                // Handle Success
-                if (executionState.ExceptionRef == null)
-                {
-                    Logger.LogInformational(executionState.OperationContext, SR.TraceSuccess);
-                    executionState.OnComplete();
-                    return;
-                }
+            // Handle Success
+            if (executionState.ExceptionRef == null)
+            {
+                Logger.LogInformational(executionState.OperationContext, SR.TraceSuccess);
+                executionState.OnComplete();
+                return;
             }
 
             // Handle Retry
             try
             {
                 StorageException translatedException = ExecutorBase.TranslateDataServiceExceptionBasedOnParseError(executionState.ExceptionRef, executionState.Cmd.CurrentResult, executionState.Cmd.ParseDataServiceError);
-  
+
                 executionState.ExceptionRef = translatedException;
                 Logger.LogInformational(executionState.OperationContext, SR.TraceRetryCheck, executionState.RetryCount, executionState.Cmd.CurrentResult.HttpStatusCode, translatedException.IsRetryable ? "yes" : "no", translatedException.Message);
 
@@ -364,7 +381,7 @@ namespace Microsoft.WindowsAzure.Storage.Core.Executor
                         {
                             Logger.LogInformational(executionState.OperationContext, SR.TraceStartRequestSync, cmd.Context.BaseUri);
                             tempResult = cmd.ExecuteFunc();
-                            
+
                             executionState.Result = cmd.ParseResponse(tempResult, executionState.Cmd.CurrentResult, cmd);
 
                             DataServiceResponse dataServiceResponse = tempResult as DataServiceResponse;
@@ -409,7 +426,7 @@ namespace Microsoft.WindowsAzure.Storage.Core.Executor
                         catch (Exception ex)
                         {
                             Logger.LogWarning(executionState.OperationContext, SR.TraceGenericError, ex.Message);
-                            
+
                             // Store exception and invoke callback here. All operations in this try would be non-retryable by default
                             if (executionState.ExceptionRef == null || !(executionState.ExceptionRef is StorageException))
                             {

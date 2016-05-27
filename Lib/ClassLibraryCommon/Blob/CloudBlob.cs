@@ -1643,71 +1643,71 @@ namespace Microsoft.WindowsAzure.Storage.Blob
                 existsResult =>
                 {
                     storageAsyncResult.UpdateCompletedSynchronously(existsResult.CompletedSynchronously);
-                    lock (storageAsyncResult.CancellationLockerObject)
+                    storageAsyncResult.CancelDelegate = null;
+                    try
                     {
-                        storageAsyncResult.CancelDelegate = null;
-                        try
+                        bool exists = this.EndExists(existsResult);
+                        if (!exists)
                         {
-                            bool exists = this.EndExists(existsResult);
-                            if (!exists)
-                            {
-                                storageAsyncResult.Result = false;
-                                storageAsyncResult.OnComplete();
-                                return;
-                            }
+                            storageAsyncResult.Result = false;
+                            storageAsyncResult.OnComplete();
+                            return;
+                        }
 
-                            ICancellableAsyncResult savedDeleteResult = this.BeginDelete(
-                                deleteSnapshotsOption,
-                                accessCondition,
-                                options,
-                                operationContext,
-                                deleteResult =>
+                        ICancellableAsyncResult savedDeleteResult = this.BeginDelete(
+                            deleteSnapshotsOption,
+                            accessCondition,
+                            options,
+                            operationContext,
+                            deleteResult =>
+                            {
+                                storageAsyncResult.UpdateCompletedSynchronously(deleteResult.CompletedSynchronously);
+                                storageAsyncResult.CancelDelegate = null;
+                                try
                                 {
-                                    storageAsyncResult.UpdateCompletedSynchronously(deleteResult.CompletedSynchronously);
-                                    storageAsyncResult.CancelDelegate = null;
-                                    try
+                                    this.EndDelete(deleteResult);
+                                    storageAsyncResult.Result = true;
+                                    storageAsyncResult.OnComplete();
+                                }
+                                catch (StorageException e)
+                                {
+                                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound)
                                     {
-                                        this.EndDelete(deleteResult);
-                                        storageAsyncResult.Result = true;
-                                        storageAsyncResult.OnComplete();
-                                    }
-                                    catch (StorageException e)
-                                    {
-                                        if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound)
+                                        if ((e.RequestInformation.ExtendedErrorInformation == null) ||
+                                            (e.RequestInformation.ExtendedErrorInformation.ErrorCode == BlobErrorCodeStrings.BlobNotFound))
                                         {
-                                            if ((e.RequestInformation.ExtendedErrorInformation == null) ||
-                                                (e.RequestInformation.ExtendedErrorInformation.ErrorCode == BlobErrorCodeStrings.BlobNotFound))
-                                            {
-                                                storageAsyncResult.Result = false;
-                                                storageAsyncResult.OnComplete();
-                                            }
-                                            else
-                                            {
-                                                storageAsyncResult.OnComplete(e);
-                                            }
+                                            storageAsyncResult.Result = false;
+                                            storageAsyncResult.OnComplete();
                                         }
                                         else
                                         {
                                             storageAsyncResult.OnComplete(e);
                                         }
                                     }
-                                    catch (Exception e)
+                                    else
                                     {
                                         storageAsyncResult.OnComplete(e);
                                     }
-                                },
-                                null /* state */);
+                                }
+                                catch (Exception e)
+                                {
+                                    storageAsyncResult.OnComplete(e);
+                                }
+                            },
+                            null /* state */);
 
+                        lock (storageAsyncResult.CancellationLockerObject)
+                        {
                             storageAsyncResult.CancelDelegate = savedDeleteResult.Cancel;
                             if (storageAsyncResult.CancelRequested)
                             {
                                 storageAsyncResult.Cancel();
                             }
                         }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
-                        }
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
                     }
                 },
                 null /* state */);

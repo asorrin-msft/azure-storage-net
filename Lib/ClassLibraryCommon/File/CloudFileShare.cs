@@ -234,22 +234,14 @@ namespace Microsoft.WindowsAzure.Storage.File
                 existsResult =>
                 {
                     storageAsyncResult.UpdateCompletedSynchronously(existsResult.CompletedSynchronously);
-                    lock (storageAsyncResult.CancellationLockerObject)
+                    storageAsyncResult.CancelDelegate = null;
+                    try
                     {
-                        storageAsyncResult.CancelDelegate = null;
-                        try
+                        bool exists = this.EndExists(existsResult);
+                        if (exists)
                         {
-                            bool exists = this.EndExists(existsResult);
-                            if (exists)
-                            {
-                                storageAsyncResult.Result = false;
-                                storageAsyncResult.OnComplete();
-                                return;
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
+                            storageAsyncResult.Result = false;
+                            storageAsyncResult.OnComplete();
                             return;
                         }
 
@@ -293,11 +285,19 @@ namespace Microsoft.WindowsAzure.Storage.File
                             },
                             null);
 
-                        storageAsyncResult.CancelDelegate = savedCreateResult.Cancel;
-                        if (storageAsyncResult.CancelRequested)
+                        lock (storageAsyncResult.CancellationLockerObject)
                         {
-                            storageAsyncResult.Cancel();
+                            storageAsyncResult.CancelDelegate = savedCreateResult.Cancel;
+                            if (storageAsyncResult.CancelRequested)
+                            {
+                                storageAsyncResult.Cancel();
+                            }
                         }
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
+                        return;
                     }
                 },
                 null);
@@ -574,22 +574,14 @@ namespace Microsoft.WindowsAzure.Storage.File
                 existsResult =>
                 {
                     storageAsyncResult.UpdateCompletedSynchronously(existsResult.CompletedSynchronously);
-                    lock (storageAsyncResult.CancellationLockerObject)
+                    storageAsyncResult.CancelDelegate = null;
+                    try
                     {
-                        storageAsyncResult.CancelDelegate = null;
-                        try
+                        bool exists = this.EndExists(existsResult);
+                        if (!exists)
                         {
-                            bool exists = this.EndExists(existsResult);
-                            if (!exists)
-                            {
-                                storageAsyncResult.Result = false;
-                                storageAsyncResult.OnComplete();
-                                return;
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            storageAsyncResult.OnComplete(e);
+                            storageAsyncResult.Result = false;
+                            storageAsyncResult.OnComplete();
                             return;
                         }
 
@@ -634,11 +626,19 @@ namespace Microsoft.WindowsAzure.Storage.File
                             },
                             null);
 
-                        storageAsyncResult.CancelDelegate = savedDeleteResult.Cancel;
-                        if (storageAsyncResult.CancelRequested)
+                        lock (storageAsyncResult.CancellationLockerObject)
                         {
-                            storageAsyncResult.Cancel();
+                            storageAsyncResult.CancelDelegate = savedDeleteResult.Cancel;
+                            if (storageAsyncResult.CancelRequested)
+                            {
+                                storageAsyncResult.Cancel();
+                            }
                         }
+                    }
+                    catch (Exception e)
+                    {
+                        storageAsyncResult.OnComplete(e);
+                        return;
                     }
                 },
                 null);
@@ -1510,7 +1510,7 @@ namespace Microsoft.WindowsAzure.Storage.File
 
             return putCmd;
         }
-                
+
         /// <summary>
         /// Implementation for the Delete method.
         /// </summary>

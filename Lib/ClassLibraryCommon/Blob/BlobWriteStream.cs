@@ -453,61 +453,67 @@ namespace Microsoft.WindowsAzure.Storage.Blob
             storageAsyncResult.UpdateCompletedSynchronously(ar.CompletedSynchronously);
             this.committed = true;
 
-            lock (storageAsyncResult.CancellationLockerObject)
+            storageAsyncResult.CancelDelegate = null;
+            try
             {
-                storageAsyncResult.CancelDelegate = null;
-                try
+                this.EndFlush(ar);
+
+                if (this.blockBlob != null)
                 {
-                    this.EndFlush(ar);
-
-                    if (this.blockBlob != null)
+                    if (this.blobMD5 != null)
                     {
-                        if (this.blobMD5 != null)
-                        {
-                            this.blockBlob.Properties.ContentMD5 = this.blobMD5.ComputeHash();
-                        }
+                        this.blockBlob.Properties.ContentMD5 = this.blobMD5.ComputeHash();
+                    }
 
-                        ICancellableAsyncResult result = this.blockBlob.BeginPutBlockList(
-                            this.blockList,
+                    ICancellableAsyncResult result = this.blockBlob.BeginPutBlockList(
+                        this.blockList,
+                        this.accessCondition,
+                        this.options,
+                        this.operationContext,
+                        this.PutBlockListCallback,
+                        storageAsyncResult);
+
+                    lock (storageAsyncResult.CancellationLockerObject)
+                    {
+                        storageAsyncResult.CancelDelegate = result.Cancel;
+                        if (storageAsyncResult.CancelRequested)
+                        {
+                            storageAsyncResult.Cancel();
+                        }
+                    }
+                }
+                else
+                {
+                    if (this.blobMD5 != null)
+                    {
+                        this.Blob.Properties.ContentMD5 = this.blobMD5.ComputeHash();
+
+                        ICancellableAsyncResult result = this.Blob.BeginSetProperties(
                             this.accessCondition,
                             this.options,
                             this.operationContext,
-                            this.PutBlockListCallback,
+                            this.SetPropertiesCallback,
                             storageAsyncResult);
 
-                        storageAsyncResult.CancelDelegate = result.Cancel;
+                        lock (storageAsyncResult.CancellationLockerObject)
+                        {
+                            storageAsyncResult.CancelDelegate = result.Cancel;
+                            if (storageAsyncResult.CancelRequested)
+                            {
+                                storageAsyncResult.Cancel();
+                            }
+                        }
                     }
                     else
                     {
-                        if (this.blobMD5 != null)
-                        {
-                            this.Blob.Properties.ContentMD5 = this.blobMD5.ComputeHash();
-
-                            ICancellableAsyncResult result = this.Blob.BeginSetProperties(
-                                this.accessCondition,
-                                this.options,
-                                this.operationContext,
-                                this.SetPropertiesCallback,
-                                storageAsyncResult);
-
-                            storageAsyncResult.CancelDelegate = result.Cancel;
-                        }
-                        else
-                        {
-                            storageAsyncResult.OnComplete();
-                        }
-                    }
-
-                    if (storageAsyncResult.CancelRequested)
-                    {
-                        storageAsyncResult.Cancel();
+                        storageAsyncResult.OnComplete();
                     }
                 }
-                catch (Exception e)
-                {
-                    this.lastException = e;
-                    storageAsyncResult.OnComplete(e);
-                }
+            }
+            catch (Exception e)
+            {
+                this.lastException = e;
+                storageAsyncResult.OnComplete(e);
             }
         }
 
