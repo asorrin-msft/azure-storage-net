@@ -69,11 +69,11 @@ namespace Microsoft.WindowsAzure.Storage.Blob
                 catch (StorageException e)
                 {
                     if ((e.RequestInformation != null) &&
-                        (((e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound) &&
+                        (((e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.BadRequest) &&
                         string.IsNullOrEmpty(accessCondition.IfMatchETag)) ||
                         (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Forbidden)))
                     {
-                        // If we got a 404 and the condition was not an If-Match OR if we got a 403,
+                        // If we got a 400 and the condition was not an If-Match OR if we got a 403,
                         // we should continue with the operation.
                     }
                     else
@@ -175,11 +175,11 @@ namespace Microsoft.WindowsAzure.Storage.Blob
                         catch (StorageException e)
                         {
                             if ((e.RequestInformation != null) &&
-                                (((e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.NotFound) &&
+                                (((e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.BadRequest) &&
                                 string.IsNullOrEmpty(accessCondition.IfMatchETag)) ||
                                 (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Forbidden)))
                             {
-                                // If we got a 404 and the condition was not an If-Match OR if we got a 403,
+                                // If we got a 400 and the condition was not an If-Match OR if we got a 403,
                                 // we should continue with the operation.
                             }
                             else
