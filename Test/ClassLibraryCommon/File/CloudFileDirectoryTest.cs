@@ -1198,6 +1198,49 @@ namespace Microsoft.WindowsAzure.Storage.File
         }
 
         [TestMethod]
+        [Description("Test the behavior of CreateIfNotExists on the root directory.")]
+        [TestCategory(ComponentCategory.File)]
+        [TestCategory(TestTypeCategory.UnitTest)]
+        [TestCategory(SmokeTestCategory.NonSmoke)]
+        [TestCategory(TenantTypeCategory.DevFabric), TestCategory(TenantTypeCategory.Cloud)]
+        public void CloudFileDirectoryRootDirectoryCreateIfNotExistsTest()
+        {
+            // This logic needs to be tested because when we call CreateIfNotExists(), internally we just call
+            // Create(), and check for an Http.Conflict (409).
+            // However, if you try to call Create() on the root directory, it will return a 405, 
+            // regardless of whether or not the share / root directory exists.
+
+            CloudFileClient client = GenerateCloudFileClient();
+            string name = GetRandomShareName();
+            CloudFileShare share = client.GetShareReference(name);
+            try
+            {
+                CloudFileDirectory rootDir = share.GetRootDirectoryReference();
+
+                string expectedErrorText = "The remote server returned an error: (404) Not Found.";
+                TestHelper.ExpectedException<StorageException>(() => rootDir.CreateIfNotExists(), expectedErrorText);
+                TestHelper.ExpectedException<StorageException>(() => rootDir.EndCreateIfNotExists(rootDir.BeginCreateIfNotExists(null, null)), expectedErrorText);
+                TestHelper.ExpectedException<StorageException>(() => { bool r = rootDir.CreateIfNotExistsAsync().Result; }, expectedErrorText);
+                TestHelper.ExpectedException<StorageException>(() => { bool r = rootDir.CreateIfNotExistsAsync(null, null).Result; }, expectedErrorText);
+
+                share.CreateIfNotExists();
+
+                // Root directory always already exists
+                Assert.IsFalse(rootDir.CreateIfNotExists());
+                Assert.IsFalse(rootDir.EndCreateIfNotExists(rootDir.BeginCreateIfNotExists(null, null)));
+                Assert.IsFalse(rootDir.CreateIfNotExistsAsync().Result);
+                Assert.IsFalse(rootDir.CreateIfNotExistsAsync(null, null).Result);
+
+                // We don't need to worry about the Delete-If-Exists case, if you try and delete the root directory it'll
+                // fail, which is fine.
+            }
+            finally
+            {
+                share.DeleteIfExists();
+            }
+        }
+
+        [TestMethod]
         [Description("Hierarchical traversal")]
         [TestCategory(ComponentCategory.File)]
         [TestCategory(TestTypeCategory.UnitTest)]
