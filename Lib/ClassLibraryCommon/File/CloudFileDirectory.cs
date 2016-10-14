@@ -164,7 +164,7 @@ namespace Microsoft.WindowsAzure.Storage.File
             {
                 // If the share does not exist, this will throw a 404, which is what we want.
                 // This.Create() will throw the same 404 if the share does not exist, and this is not the root directory.
-                this.ServiceClient.GetShareReference(this.Share.Name, this.Share.SnapshotTime).FetchAttributes();
+                this.ServiceClient.GetShareReference(this.Share.Name, this.Share.SnapshotTime).FetchAttributes(null, requestOptions, operationContext);
 
                 // If the above call did not throw an exception, then the share (and thus the root directory) already exists.
                 return false;

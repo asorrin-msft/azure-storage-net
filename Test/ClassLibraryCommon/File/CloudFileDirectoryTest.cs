@@ -1220,8 +1220,8 @@ namespace Microsoft.WindowsAzure.Storage.File
                 string expectedErrorText = "The remote server returned an error: (404) Not Found.";
                 TestHelper.ExpectedException<StorageException>(() => rootDir.CreateIfNotExists(), expectedErrorText);
                 TestHelper.ExpectedException<StorageException>(() => rootDir.EndCreateIfNotExists(rootDir.BeginCreateIfNotExists(null, null)), expectedErrorText);
-                TestHelper.ExpectedException<StorageException>(() => { bool r = rootDir.CreateIfNotExistsAsync().Result; }, expectedErrorText);
-                TestHelper.ExpectedException<StorageException>(() => { bool r = rootDir.CreateIfNotExistsAsync(null, null).Result; }, expectedErrorText);
+                TestHelper.ExpectedException<StorageException>(() => rootDir.CreateIfNotExistsAsync().Wait(), expectedErrorText);
+                TestHelper.ExpectedException<StorageException>(() => rootDir.CreateIfNotExistsAsync().Wait(), expectedErrorText);
 
                 share.CreateIfNotExists();
 
