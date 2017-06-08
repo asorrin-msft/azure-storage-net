@@ -910,5 +910,109 @@ namespace Microsoft.WindowsAzure.Storage.Blob
             builder.Port = port;
             return builder.Uri;
         }
+
+        [TestMethod]
+        [Description("Perform a SAS request specifying a shared protocol and ensure that everything works properly.")]
+        [TestCategory(ComponentCategory.Blob)]
+        [TestCategory(TestTypeCategory.UnitTest)]
+        [TestCategory(SmokeTestCategory.NonSmoke)]
+        [TestCategory(TenantTypeCategory.DevFabric), TestCategory(TenantTypeCategory.Cloud)]
+        public void CloudBlobContainerSASTestSamples()
+        {
+            string expectedContent = "sample content";
+            string blobName = "testblob";
+
+            // Create a test blob in the container
+            CloudBlockBlob blob = this.testContainer.GetBlockBlobReference(blobName);
+            blob.UploadText(expectedContent);
+            // Create a policy with read access and get SAS.
+            SharedAccessBlobPolicy policy = new SharedAccessBlobPolicy()
+            {
+                SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30),
+                Permissions = SharedAccessBlobPermissions.Read
+            };
+            string sasToken = this.testContainer.GetSharedAccessSignature(policy);
+            string accountName = this.testContainer.ServiceClient.Credentials.AccountName;
+
+            Uri containerUri = this.testContainer.Uri;
+            Uri blobUri = blob.Uri;
+
+            {
+                #region sample_CloudBlobContainer_Constructor_CredentialsWithSASOverload
+
+                // The SAS token here should be something like the following:
+                // sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=b&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+                // It should not be the full URI to a resource, but can be any valid SAS token.
+                StorageCredentials credentialsWithSAS = new StorageCredentials(sasToken);
+                CloudBlobContainer containerWithSAS = new CloudBlobContainer(containerUri, credentialsWithSAS);
+                CloudBlockBlob blobWithSAS = containerWithSAS.GetBlockBlobReference(blobName);
+
+                #endregion
+
+                Assert.AreEqual(expectedContent, blobWithSAS.DownloadText());
+            }
+
+            {
+                #region sample_StorageCredentials_TransformUri
+
+                // The SAS token here should be something like the following:
+                // sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=c&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+                // It should not be the full URI to a resource, but can be any valid SAS token.
+                StorageCredentials credentialsWithSAS = new StorageCredentials(sasToken);
+
+                // After this call, containerUriWithSAS will be something like 
+                // https://myaccount.blob.core.windows.net/sascontainer?sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=c&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+                Uri containerUriWithSAS = credentialsWithSAS.TransformUri(containerUri);
+                CloudBlobContainer containerWithSAS = new CloudBlobContainer(containerUriWithSAS);
+                CloudBlockBlob blobWithSAS = containerWithSAS.GetBlockBlobReference(blobName);
+
+                #endregion
+
+                Assert.AreEqual(expectedContent, blobWithSAS.DownloadText());
+            }
+
+            {
+                StorageCredentials credentialsWithSAS = new StorageCredentials("badSASToken");
+                #region sample_StorageCredentials_UpdateSASToken
+
+                // "credentialsWithSAS" is a StorageCredentials object that already exists and was originally created with a SAS token.
+                CloudBlobContainer containerWithSAS = new CloudBlobContainer(containerUri, credentialsWithSAS);
+                CloudBlockBlob blobWithSAS = containerWithSAS.GetBlockBlobReference(blobName);
+
+                // The SAS token here should be something like the following:
+                // sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=b&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+                // It should not be the full URI to a resource, but can be any valid SAS token.
+                credentialsWithSAS.UpdateSASToken(sasToken);
+
+                #endregion
+
+                Assert.AreEqual(expectedContent, blobWithSAS.DownloadText());
+            }
+
+
+            {
+                #region sample_StorageCredentials_SAS_Properties
+
+                // The SAS token here should be something like the following:
+                // sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=b&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+                // It should not be the full URI to a resource, but can be any valid SAS token.
+                StorageCredentials credentialsWithSAS = new StorageCredentials(sasToken);
+
+                // This retrieves the full SAS token, the one shown above.
+                string fullSASToken = credentialsWithSAS.SASToken;
+
+                // This retrieves only the "sig" part of the SAS token. In the above example, it would be:
+                // Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+                string sasSignature = credentialsWithSAS.SASSignature;
+
+                CloudBlobContainer containerWithSAS = new CloudBlobContainer(containerUri, credentialsWithSAS);
+                CloudBlockBlob blobWithSAS = containerWithSAS.GetBlockBlobReference(blobName);
+
+                #endregion
+
+                Assert.AreEqual(expectedContent, blobWithSAS.DownloadText());
+            }
+
+        }
     }
 }

@@ -612,7 +612,12 @@ namespace Microsoft.WindowsAzure.Storage
         /// </summary>
         /// <param name="policy">A <see cref="SharedAccessAccountPolicy"/> object specifying the access policy for the shared access signature.</param>
         /// <returns>A shared access signature, as a URI query string.</returns>
-        /// <remarks>The query string returned includes the leading question mark.</remarks>
+        /// <remarks>The query string returned includes the leading question mark.
+        /// 
+        /// ## Examples
+        /// [!code-csharp[Get_Shared_Access_Signature_Sample](~/azure-storage-net/Test/ClassLibraryCommon/AccountSASTests.cs#sample_accountSAS "Get Shared Access Signature Sample")] 
+        /// 
+        /// </remarks>
         public string GetSharedAccessSignature(SharedAccessAccountPolicy policy)
         {
             if (!this.Credentials.IsSharedKey)

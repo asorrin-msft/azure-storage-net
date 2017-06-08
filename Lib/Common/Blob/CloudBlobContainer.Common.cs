@@ -35,6 +35,23 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// Initializes a new instance of the <see cref="CloudBlobContainer"/> class.
         /// </summary>
         /// <param name="containerAddress">A <see cref="System.Uri"/> object specifying the absolute URI to the container.</param>
+        /// <remarks>This constructor should only be used if you are using SAS to authenticate, 
+        /// or if the container already exists and is public.
+        /// 
+        /// If you are using SAS, the containerAddress argument should contain the address 
+        /// and the full SAS token, something like:
+        /// 
+        /// https://myaccount.blob.core.windows.net/sascontainer?sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=c&sp=rw&sip=168.1.5.60-168.1.5.70&spr=https&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+        /// 
+        /// See https://docs.microsoft.com/en-us/azure/storage/storage-dotnet-shared-access-signature-part-1 
+        /// for more information on creating and using SAS tokens.
+        /// 
+        /// If the container is publically accessible, the containerAddress argument should just contain the container Uri:
+        /// 
+        /// https://myaccount.blob.core.windows.net/mycontainer
+        /// 
+        /// See <see cref="BlobContainerPublicAccessType"/> for more information on public access containers. 
+        /// </remarks>
         public CloudBlobContainer(Uri containerAddress)
             : this(containerAddress, null /* credentials */)
         {

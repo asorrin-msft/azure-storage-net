@@ -1400,7 +1400,7 @@ namespace Microsoft.WindowsAzure.Storage
                 SharedAccessAccountPolicy policy = GetPolicyWithFullPermissions();
                 IPAddress invalidIP = IPAddress.Parse("255.255.255.255");
                 policy.IPAddressOrRange = new IPAddressOrRange(invalidIP.ToString());
-
+                
                 CloudStorageAccount account = new CloudStorageAccount(fileClient.Credentials, false);
                 string accountSASToken = account.GetSharedAccessSignature(policy);
                 StorageCredentials accountSAS = new StorageCredentials(accountSASToken);
@@ -1451,6 +1451,75 @@ namespace Microsoft.WindowsAzure.Storage
             builder.Scheme = scheme;
             builder.Port = port;
             return builder.Uri;
+        }
+
+        [TestMethod]
+        [Description("Account SAS samples tests")]
+        [TestCategory(ComponentCategory.Blob)]
+        [TestCategory(TestTypeCategory.UnitTest)]
+        [TestCategory(SmokeTestCategory.NonSmoke)]
+        [TestCategory(TenantTypeCategory.DevStore), TestCategory(TenantTypeCategory.DevFabric), TestCategory(TenantTypeCategory.Cloud)]
+        public void AccountSASSamples()
+        {
+            CloudBlobClient blobClient = GenerateCloudBlobClient();
+            string containerName = "sampleContainer";
+            string tableName = "sampleTable";
+            string targetIPV4Address = GetMyBlobIPAddressFromService().ToString();
+            string myStorageAccountName = blobClient.Credentials.AccountName;
+            string myStorageAccountKey = blobClient.Credentials.ExportBase64EncodedKey();
+            blobClient.GetContainerReference(containerName).Create();
+            CloudTable table = GenerateCloudTableClient().GetTableReference(tableName);
+            table.Create();
+
+            #region sample_accountSAS
+            StorageCredentials storageCredentialsWithKey = new StorageCredentials(myStorageAccountName, myStorageAccountKey);
+            CloudStorageAccount accountWithAccountKey = new CloudStorageAccount(storageCredentialsWithKey, useHttps: true);
+
+            SharedAccessAccountPolicy accountPolicy = new SharedAccessAccountPolicy()
+            {
+                // Give access to the blob service and the table service for this account, but not queues or files.
+                Services = SharedAccessAccountServices.Blob | SharedAccessAccountServices.Table,
+
+                // This SAS token will expire in one hour.
+                // Omitting the "SharedAccessStartTime" is usually a good idea, so that there are no clock-skew issues.
+                SharedAccessExpiryTime = DateTime.Now + TimeSpan.FromHours(1),
+
+                // Only allow access from a single IPV4 address
+                // Note that this is the IP address as seen by the Storage Service, using a proxy will interfere with this.
+                IPAddressOrRange = new IPAddressOrRange(targetIPV4Address),
+
+                // Grant read access to all resoures, and update access to table resources.
+                Permissions = SharedAccessAccountPermissions.Read | SharedAccessAccountPermissions.Update,
+
+                // Cause the Storage service to fail any requests that do not use HTTPS.
+                Protocols = SharedAccessProtocol.HttpsOnly,
+
+                // Grant access to container- and object-level operations, but not 
+                ResourceTypes = SharedAccessAccountResourceTypes.Container | SharedAccessAccountResourceTypes.Object,
+            };
+
+            // Create the Account Shared Access Signature string from the policy and account key.
+            string sharedAccessSignature = accountWithAccountKey.GetSharedAccessSignature(accountPolicy);
+
+            // Normally, this string would then be sent to a different user or process, which would then have limited
+            // access to the storage account, as determined by the above access policy.
+            // For purposes of demonstration, here we use it directly.
+
+            StorageCredentials credentialsWithAccountSAS = new StorageCredentials(sharedAccessSignature);
+            CloudStorageAccount accountWithSAS = new CloudStorageAccount(credentialsWithAccountSAS, useHttps: true);
+            CloudBlobClient blobClientWithSAS = accountWithSAS.CreateCloudBlobClient();
+            CloudTableClient tableClientWithSAS = accountWithSAS.CreateCloudTableClient();
+
+            // With the above policy, you will be able to read properties of the container and its contained blobs, but not edit.
+            CloudBlobContainer containerWithSAS = blobClientWithSAS.GetContainerReference(containerName);
+
+            // With the above policy, table entities are able to be read and updated, but not deleted.
+            CloudTable tableWithSAS = tableClientWithSAS.GetTableReference(tableName);
+            #endregion
+
+            Assert.IsTrue(containerWithSAS.Exists());
+            tableWithSAS.Execute(TableOperation.Insert(new DynamicTableEntity("samplepk", "samplerk")));
+            Assert.AreEqual("samplepk", ((DynamicTableEntity)table.Execute(TableOperation.Retrieve("samplepk", "samplerk")).Result).PartitionKey);
         }
     }
 }

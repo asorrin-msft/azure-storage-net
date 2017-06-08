@@ -27,6 +27,10 @@ namespace Microsoft.WindowsAzure.Storage
     /// Represents a shared access policy for a account, which specifies the start time, expiry time, 
     /// permissions, signed service, signed resource type, signed protocol, and signed IP addresses for a shared access signature.
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    /// [!code-csharp[Shared_Access_Account_Policy_Sample](~/azure-storage-net/Test/ClassLibraryCommon/AccountSASTests.cs#sample_accountSAS "Shared Access Account Policy Sample")] 
+    /// </remarks>
     public sealed class SharedAccessAccountPolicy
     {
         /// <summary>
@@ -40,6 +44,10 @@ namespace Microsoft.WindowsAzure.Storage
         /// Gets or sets the start time for a shared access signature associated with this shared access policy.
         /// </summary>
         /// <value>A <see cref="DateTimeOffset"/> specifying the shared access start time.</value>
+        /// <remarks>This value is optional. If not specified, the shared access signature will be
+        /// valid immediately. Omitting this value is recommended if this is the desired behavior, 
+        /// because setting it to DateTime.Now may cause intermittant failures, due to clock skew
+        /// with the Storage Service.</remarks>
         public DateTimeOffset? SharedAccessStartTime { get; set; }
 
         /// <summary>
@@ -72,6 +80,7 @@ namespace Microsoft.WindowsAzure.Storage
         /// <summary>
         /// Gets or sets the allowed IP address or IP address range for a shared access signature associated with this shared access policy.
         /// </summary>
+        /// <remarks>Only IPV4 is supported at this time.</remarks>
         public IPAddressOrRange IPAddressOrRange { get; set; }
 
         /// <summary>

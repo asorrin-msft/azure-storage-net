@@ -33,6 +33,10 @@ namespace Microsoft.WindowsAzure.Storage.Auth
     /// <summary>
     /// Represents a set of credentials used to authenticate access to a Microsoft Azure storage account.
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    ///  [!code-csharp[Storage_Credentials_Sample](~/azure-storage-net/Test/Common/Core/CloudStorageAccountTests.cs#sample_CloudStorageAccount_Constructor "Storage Credentials Sample")] 
+    /// </remarks>
     public sealed class StorageCredentials
     {
         private SasQueryBuilder queryBuilder;
@@ -41,6 +45,10 @@ namespace Microsoft.WindowsAzure.Storage.Auth
         /// Gets the associated shared access signature token for the credentials.
         /// </summary>
         /// <value>The shared access signature token.</value>
+        /// <remarks>
+        /// ## Examples
+        /// [!code-csharp[Storage_Credentials_SASSignature](~/azure-storage-net/Test/Common/Core/CloudStorageAccountTests.cs#sample_StorageCredentials_SAS_Properties "Storage Credentials SASSignature")] 
+        /// </remarks>
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly", MessageId = "SAS", Justification = "Back compatibility.")]
         public string SASToken { get; private set; }
 
@@ -104,6 +112,10 @@ namespace Microsoft.WindowsAzure.Storage.Auth
         /// <summary>
         /// Gets the value of the shared access signature token's <c>sig</c> parameter.
         /// </summary>
+        /// <remarks>
+        /// ## Examples
+        /// [!code-csharp[Storage_Credentials_SASSignature](~/azure-storage-net/Test/Common/Core/CloudStorageAccountTests.cs#sample_StorageCredentials_SAS_Properties "Storage Credentials SASSignature")] 
+        /// </remarks>
         public string SASSignature
         {
             get
@@ -182,6 +194,10 @@ namespace Microsoft.WindowsAzure.Storage.Auth
         /// Initializes a new instance of the <see cref="StorageCredentials"/> class with the specified shared access signature token.
         /// </summary>
         /// <param name="sasToken">A string representing the shared access signature token.</param>
+        /// <remarks>
+        /// ## Examples
+        /// [!code-csharp[Storage_Credentials_SAS_Constructor_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_Constructor_CredentialsWithSASOverload "Storage Credentials SAS Constructor Sample")] 
+        /// </remarks>
         public StorageCredentials(string sasToken)
         {
             CommonUtility.AssertNotNullOrEmpty("sasToken", sasToken);
@@ -252,6 +268,10 @@ namespace Microsoft.WindowsAzure.Storage.Auth
         /// Updates the shared access signature (SAS) token value for storage credentials created with a shared access signature.
         /// </summary>
         /// <param name="sasToken">A string that specifies the SAS token value to update.</param>
+        /// <remarks>
+        /// ## Examples
+        /// [!code-csharp[Storage_Credentials_Update_SAS_Token](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_StorageCredentials_UpdateSASToken "Storage Credentials Update SAS Token")]
+        /// </remarks>
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly", MessageId = "SAS", Justification = "Back compatibility.")]
         public void UpdateSASToken(string sasToken)
         {
@@ -281,6 +301,12 @@ namespace Microsoft.WindowsAzure.Storage.Auth
         /// </summary>
         /// <param name="resourceUri">A <see cref="System.Uri"/> object that represents the resource URI to be transformed.</param>
         /// <returns>A <see cref="System.Uri"/> object that represents the signature, including the resource URI and the shared access token.</returns>
+        /// <remarks>
+        /// This method properly handles the case where the input Uri already contains query parameters.
+        /// 
+        /// ## Examples
+        /// [!code-csharp[Storage_Credentials_SAS_TransformUri_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_StorageCredentials_TransformUri "Storage Credentials SAS TransformUri Sample")]
+        /// </remarks>
 #if WINDOWS_RT
         [DefaultOverload]
 #endif
