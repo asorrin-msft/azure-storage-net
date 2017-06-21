@@ -54,6 +54,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// <param name="accessType">An <see cref="BlobContainerPublicAccessType"/> object that specifies whether data in the container may be accessed publicly and what level of access is to be allowed.</param>
         /// <param name="requestOptions">A <see cref="BlobRequestOptions"/> object that specifies additional options for the request.</param>
         /// <param name="operationContext">An <see cref="OperationContext"/> object that represents the context for the current operation.</param>
+        /// <remarks>
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_Create_With_PublicAccess_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/CloudBlobContainerTest.cs#sample_ContainerWithPublicAccess "CloudBlobContainer Create With PublicAccess Sample")] 
+        /// </remarks>
         [DoesServiceRequest]
         public virtual void Create(BlobContainerPublicAccessType accessType, BlobRequestOptions requestOptions = null, OperationContext operationContext = null)
         {
@@ -1135,6 +1139,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// <param name="accessCondition">An <see cref="AccessCondition"/> object that represents the condition that must be met in order for the request to proceed. If <c>null</c>, no condition is used.</param>
         /// <param name="options">A <see cref="BlobRequestOptions"/> object that specifies additional options for the request. If <c>null</c>, default options are applied to the request.</param>
         /// <param name="operationContext">An <see cref="OperationContext"/> object that represents the context for the current operation.</param>
+        /// <remarks>
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_SetPermissions_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSetPermissions "CloudBlobContainer SetPermissions Sample")] 
+        /// </remarks>
         [DoesServiceRequest]
         public virtual void SetPermissions(BlobContainerPermissions permissions, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
         {
@@ -1252,6 +1260,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// <param name="options">A <see cref="BlobRequestOptions"/> object that specifies additional options for the request. If <c>null</c>, default options are applied to the request.</param>
         /// <param name="operationContext">An <see cref="OperationContext"/> object that represents the context for the current operation.</param>
         /// <returns>The container's permissions.</returns>
+        /// <remarks>
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_GetPermissions_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSetPermissions "CloudBlobContianer GetPermissions Sample")] 
+        /// </remarks>
         [DoesServiceRequest]
         public virtual BlobContainerPermissions GetPermissions(AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
         {

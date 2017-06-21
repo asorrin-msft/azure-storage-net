@@ -22,6 +22,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
     /// <summary>
     /// Specifies the set of possible permissions for a shared access policy.
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    ///  [!code-csharp[SharedAccessBlobPolicy_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSharedAccessSignature "SharedAccessBlobPolicy Sample")] 
+    ///</remarks>
     [Flags]
     public enum SharedAccessBlobPermissions
     {

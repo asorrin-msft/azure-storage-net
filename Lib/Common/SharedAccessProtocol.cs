@@ -22,6 +22,10 @@ namespace Microsoft.WindowsAzure.Storage
     /// <summary>
     /// Specifies the set of possible signed protocols for a shared access account policy.
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    ///  [!code-csharp[SharedAccessProtocol_Sample](~/azure-storage-net/Test/ClassLibraryCommon/AccountSASTests.cs#sample_accountSAS "SharedAccessProtocol Sample")] 
+    /// </remarks>
     public enum SharedAccessProtocol
     {
         /// <summary>

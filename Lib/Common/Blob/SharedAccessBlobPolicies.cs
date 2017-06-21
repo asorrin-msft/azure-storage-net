@@ -25,6 +25,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
     /// <summary>
     /// Represents the collection of shared access policies defined for a container.
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    ///  [!code-csharp[SharedAccessBlobPolicies_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSetPermissions "SharedAccessBlobPolicies Sample")] 
+    /// </remarks>
     [SuppressMessage(
         "Microsoft.Naming",
         "CA1710:IdentifiersShouldHaveCorrectSuffix",

@@ -51,6 +51,9 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// https://myaccount.blob.core.windows.net/mycontainer
         /// 
         /// See <see cref="BlobContainerPublicAccessType"/> for more information on public access containers. 
+        ///
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_Constructor_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_StorageCredentials_TransformUri "CloudBlobContainer Constructor With SAS URI Sample")] 
         /// </remarks>
         public CloudBlobContainer(Uri containerAddress)
             : this(containerAddress, null /* credentials */)
@@ -62,6 +65,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// </summary>
         /// <param name="containerAddress">A <see cref="System.Uri"/> object specifying the absolute URI to the container.</param>
         /// <param name="credentials">A <see cref="StorageCredentials"/> object.</param>
+        /// <remarks>
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_Constructor_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_Constructor_CredentialsWithSASOverload "CloudBlobContainer Constructor With SAS Credentials Sample")] 
+        /// </remarks>
         public CloudBlobContainer(Uri containerAddress, StorageCredentials credentials)
             : this(new StorageUri(containerAddress), credentials)
         {
@@ -72,6 +79,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// </summary>
         /// <param name="containerAddress">A <see cref="System.Uri"/> object specifying the absolute URI to the container.</param>
         /// <param name="credentials">A <see cref="StorageCredentials"/> object.</param>
+        /// <remarks>
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_Constructor_With_StorageUri_And_Credentials](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSharedAccessSignatureWithNamedPolicy "CloudBlobContainer Constructor With StorageUri And Credentials Sample")] 
+        /// </remarks>
         public CloudBlobContainer(StorageUri containerAddress, StorageCredentials credentials)
         {
             CommonUtility.AssertNotNull("containerAddress", containerAddress);
@@ -190,7 +201,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// </summary>
         /// <param name="policy">A <see cref="SharedAccessBlobPolicy"/> object specifying the access policy for the shared access signature.</param>
         /// <returns>A shared access signature, as a URI query string.</returns>
-        /// <remarks>The query string returned includes the leading question mark.</remarks>
+        /// <remarks>The query string returned includes the leading question mark.
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_GetSharedAccessSignature_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSharedAccessSignature "CloudBlobContainer GetSharedAccessSignature Sample")] 
+        /// </remarks>
         public string GetSharedAccessSignature(SharedAccessBlobPolicy policy)
         {
             return this.GetSharedAccessSignature(policy, null /* groupPolicyIdentifier */);
@@ -202,7 +216,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// <param name="policy">A <see cref="SharedAccessBlobPolicy"/> object specifying the access policy for the shared access signature.</param>
         /// <param name="groupPolicyIdentifier">A container-level access policy.</param>
         /// <returns>A shared access signature, as a URI query string.</returns>
-        /// <remarks>The query string returned includes the leading question mark.</remarks>
+        /// <remarks>The query string returned includes the leading question mark.
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_GetSharedAccessSignature_Named_Policy_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSharedAccessSignatureWithNamedPolicy "CloudBlobContainer GetSharedAccessSignature With Named Policy Sample")] 
+        /// </remarks>
         public string GetSharedAccessSignature(SharedAccessBlobPolicy policy, string groupPolicyIdentifier)
         {
             return this.GetSharedAccessSignature(policy, groupPolicyIdentifier, null /* protocols */, null /* ipAddressOrRange */);
@@ -216,7 +233,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         /// <param name="protocols">The allowed protocols (https only, or http and https). Null if you don't want to restrict protocol.</param>
         /// <param name="ipAddressOrRange">The allowed IP address or IP address range. Null if you don't want to restrict based on IP address.</param>
         /// <returns>A shared access signature, as a URI query string.</returns>
-        /// <remarks>The query string returned includes the leading question mark.</remarks>
+        /// <remarks>The query string returned includes the leading question mark.
+        /// ## Examples
+        ///  [!code-csharp[CloudBlobContainer_GetSharedAccessSignature_Named_Policy_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSharedAccessSignatureWithNamedPolicy "CloudBlobContainer GetSharedAccessSignature With Named Policy Sample")] 
+        /// </remarks>
         public string GetSharedAccessSignature(SharedAccessBlobPolicy policy, string groupPolicyIdentifier, SharedAccessProtocol? protocols, IPAddressOrRange ipAddressOrRange)
         {
             if (!this.ServiceClient.Credentials.IsSharedKey)

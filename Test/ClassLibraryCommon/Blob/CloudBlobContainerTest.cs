@@ -3562,6 +3562,41 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         }
 #endif
 
+        [TestMethod]
+        [Description("Demo creating a publicly accessible container, and accessing it anonymously.")]
+        [TestCategory(ComponentCategory.Blob)]
+        [TestCategory(TestTypeCategory.UnitTest)]
+        [TestCategory(SmokeTestCategory.NonSmoke)]
+        [TestCategory(TenantTypeCategory.DevFabric), TestCategory(TenantTypeCategory.Cloud)]
+        public void CreatePublicContainerSample()
+        {
+            string blobName = "blob";
+            string expectedBlobText = "expected blob text";
+            CloudBlobContainer containerWithSharedKey = GetRandomContainerReference();
+
+            #region sample_ContainerWithPublicAccess
+            // This creates a container with the public access level set to "blob".
+            // This can later be changed by calling the "SetPermissions" API on the container.
+            containerWithSharedKey.Create(BlobContainerPublicAccessType.Blob);
+
+            // This is for demo purposes - this blob container contains a URI, but no access key or SAS token.
+            // Calls to this container (such as ListBlobs) will fail, because the access type is set to "blob".
+            CloudBlobContainer blobContainerWithNoCredentials = new CloudBlobContainer(containerWithSharedKey.Uri);
+
+            // This blob has no credentials, but download operations will work, because the container is publically accessible.
+            // Contents of the blob can also be accessed directly through the URI. If the content is meant to be displayed
+            // in a browser, it is usually helpful to set the "Content-type" header (BlobProperties.ContentType), and other
+            // content-related headers.
+            CloudBlockBlob blobWithNoCredentials = blobContainerWithNoCredentials.GetBlockBlobReference(blobName);
+            #endregion
+
+            CloudBlockBlob blobWithCredentials = containerWithSharedKey.GetBlockBlobReference(blobName);
+            blobWithCredentials.UploadText(expectedBlobText);
+            Assert.AreEqual(expectedBlobText, blobWithNoCredentials.DownloadText());
+            TestHelper.ExpectedException<StorageException>(() => blobContainerWithNoCredentials.ListBlobs(), "List blobs should fail on a container with public access type = 'blob'.");
+        }
+
+
         private CloudBlobContainer GenerateRandomWriteOnlyBlobContainer()
         {
             string blobContainerName = "n" + Guid.NewGuid().ToString("N");

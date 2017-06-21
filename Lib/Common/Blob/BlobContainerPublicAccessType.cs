@@ -20,6 +20,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
     /// <summary>
     /// Specifies the level of public access that is allowed on the container.
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    ///  [!code-csharp[BlobContainerPublicAccessType_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/CloudBlobContainerTest.cs#sample_ContainerWithPublicAccess "BlobContainerPublicAccessType Sample")] 
+    /// </remarks>
     public enum BlobContainerPublicAccessType
     {
         /// <summary>
@@ -28,12 +32,14 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         Off,
 
         /// <summary>
-        /// Container-level public access. Anonymous clients can read container and blob data.
+        /// Container-level public access. Anonymous clients can read container and blob data. This includes 
+        /// raw HTTP requests, such as that might be emitted by a browser.
         /// </summary>
         Container,
 
         /// <summary>
         /// Blob-level public access. Anonymous clients can read blob data within this container, but not container data.
+        /// This includes raw HTTP requests, such as that might be emitted by a browser.
         /// </summary>
         Blob,
 

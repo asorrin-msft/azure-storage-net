@@ -287,15 +287,24 @@ namespace Microsoft.WindowsAzure.Storage.Blob
         [TestCategory(TenantTypeCategory.DevStore), TestCategory(TenantTypeCategory.DevFabric), TestCategory(TenantTypeCategory.Cloud)]
         public void CloudBlobContainerUpdateSASToken()
         {
-            // Create a policy with read/write access and get SAS.
+            CloudBlobContainer container = this.testContainer;
+            #region sample_CloudBlobContainer_GetSharedAccessSignature
+            // Create a policy with read/write access and get the SAS token.
             SharedAccessBlobPolicy policy = new SharedAccessBlobPolicy()
             {
+                // Start time is optional. If omitted, the SAS token will be valid immediately.
                 SharedAccessStartTime = DateTimeOffset.UtcNow.AddMinutes(-5),
                 SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30),
                 Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write,
             };
-            string sasToken = this.testContainer.GetSharedAccessSignature(policy);
-            //Thread.Sleep(35000);
+
+            // sasToken will be something like:
+            // ?sv=2015-04-05&st=2015-04-29T22%3A18%3A26Z&se=2015-04-30T02%3A23%3A26Z&sr=c&sp=rw&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+            // This string can used as the query string of a URI of this container, or a blob in this container.
+            // It can also be used as the "sasToken" parameter to the constructor of a StorageCredentials object.
+            string sasToken = container.GetSharedAccessSignature(policy);
+            #endregion
+
             CloudBlockBlob testBlockBlob = this.testContainer.GetBlockBlobReference("blockblob");
             TestAccess(sasToken, SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write, null, this.testContainer, testBlockBlob);
 
@@ -312,8 +321,8 @@ namespace Microsoft.WindowsAzure.Storage.Blob
             creds.UpdateSASToken(sasToken2);
 
             // Extra check to make sure that we have actually updated the SAS token.
-            CloudBlobContainer container = new CloudBlobContainer(this.testContainer.Uri, creds);
-            CloudBlockBlob blob = container.GetBlockBlobReference("blockblob2");
+            CloudBlobContainer containerCopy = new CloudBlobContainer(this.testContainer.Uri, creds);
+            CloudBlockBlob blob = containerCopy.GetBlockBlobReference("blockblob2");
 
             TestHelper.ExpectedException(
                 () => UploadText(blob, "blob", Encoding.UTF8),
@@ -1012,7 +1021,82 @@ namespace Microsoft.WindowsAzure.Storage.Blob
 
                 Assert.AreEqual(expectedContent, blobWithSAS.DownloadText());
             }
+        }
 
+        [TestMethod]
+        [Description("Demo creating and using a stored access policy, and verify that everything works correctly.")]
+        [TestCategory(ComponentCategory.Blob)]
+        [TestCategory(TestTypeCategory.UnitTest)]
+        [TestCategory(SmokeTestCategory.NonSmoke)]
+        [TestCategory(TenantTypeCategory.DevFabric), TestCategory(TenantTypeCategory.Cloud)]
+        public void ContainerStoredPolicyTestSample()
+        {
+            string expectedContent = "sample content";
+            string blobName = "testblob";
+            string policyName = "policy";
+
+            // Create a test blob in the container
+            CloudBlockBlob blob = this.testContainer.GetBlockBlobReference(blobName);
+            blob.UploadText(expectedContent);
+
+            CloudBlobContainer containerWithSharedKey = testContainer;
+            {
+                #region sample_CloudBlobContainer_GetSetPermissions
+
+                // If we want to set the permissions on a container, first we should get the existing permissions.
+                // This is important, because "SetPermissions" uses "replace" semantics, not "merge" semantics.
+                // If we skipped this step and just created a new BlobContainerPermissions object locally, 
+                // any existing policies would be deleted.
+                BlobContainerPermissions permissions = containerWithSharedKey.GetPermissions();
+
+                // Create a policy with read access.
+                SharedAccessBlobPolicy policy = new SharedAccessBlobPolicy()
+                {
+                    SharedAccessExpiryTime = DateTimeOffset.UtcNow.AddMinutes(30),
+                    Permissions = SharedAccessBlobPermissions.Read
+                };
+
+                // Once uploaded, these permissions will allow SAS tokens created with the named policy
+                // to read from the container for 30 minutes, as specified in the policy.
+                // This only applies to SAS tokens created referencing this specific policy name on this specific container.
+                permissions.SharedAccessPolicies[policyName] = policy;
+
+                // This call actually uploads the permissions to the Azure Storage Service.
+                // Note that this can take up to 30 seconds after the call completes to take affect.
+                containerWithSharedKey.SetPermissions(permissions);
+                #endregion
+            }
+
+            Uri containerUri = this.testContainer.Uri;
+            Uri blobUri = blob.Uri;
+
+            string accountName = containerWithSharedKey.ServiceClient.Credentials.AccountName;
+            {
+                #region sample_CloudBlobContainer_GetSharedAccessSignatureWithNamedPolicy
+                SharedAccessBlobPolicy policy = new SharedAccessBlobPolicy()
+                {
+                    // As we are using a stored access policy, in this case we are adding no additional restrictions to the SAS token,
+                    // other than what is already specified in the stored access policy.
+                };
+
+                // sasToken will be something like:
+                // ?sv=2015-04-05&sr=c&si=mypolicyname&sig=Z%2FRHIX5Xcg0Mq2rqI3OlWTjEg2tYkboXr1P9ZUXDtkk%3D
+                // This string can used as the query string of a URI of this container, or a blob in this container.
+                // It can also be used as the "sasToken" parameter to the constructor of a StorageCredentials object, as shown here.
+                string sasToken = containerWithSharedKey.GetSharedAccessSignature(policy, policyName);
+
+                StorageCredentials credentialsWithSAS = new StorageCredentials(sasToken);
+                StorageUri storageUri = new StorageUri(containerUri);
+                CloudBlobContainer containerWithSAS = new CloudBlobContainer(storageUri, credentialsWithSAS);
+                CloudBlockBlob blobWithSAS = containerWithSAS.GetBlockBlobReference(blobName);
+
+                #endregion
+
+                TestHelper.SpinUpTo30SecondsIgnoringFailures(() =>
+                {
+                    Assert.AreEqual(expectedContent, blobWithSAS.DownloadText());
+                });
+            }
         }
     }
 }

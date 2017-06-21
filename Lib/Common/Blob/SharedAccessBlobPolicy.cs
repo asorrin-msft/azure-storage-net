@@ -25,6 +25,10 @@ namespace Microsoft.WindowsAzure.Storage.Blob
     /// Represents a shared access policy, which specifies the start time, expiry time, 
     /// and permissions for a shared access signature.
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    ///  [!code-csharp[SharedAccessBlobPolicy_Sample](~/azure-storage-net/Test/ClassLibraryCommon/Blob/SASTests.cs#sample_CloudBlobContainer_GetSharedAccessSignature "SharedAccessBlobPolicy Sample")] 
+    ///</remarks>
     public sealed class SharedAccessBlobPolicy
     {
         /// <summary>

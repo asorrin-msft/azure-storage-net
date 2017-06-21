@@ -32,6 +32,10 @@ namespace Microsoft.WindowsAzure.Storage
     /// <summary>
     /// Specifies either a single IP Address or a single range of IP Addresses (a minimum and a maximum, inclusive.)
     /// </summary>
+    /// <remarks>
+    /// ## Examples
+    ///  [!code-csharp[IPAddressOrRange_Sample](~/azure-storage-net/Test/ClassLibraryCommon/AccountSASTests.cs#sample_accountSAS "IPAddressOrRange Sample")] 
+    /// </remarks>
     public class IPAddressOrRange
     {
         /// <summary>
