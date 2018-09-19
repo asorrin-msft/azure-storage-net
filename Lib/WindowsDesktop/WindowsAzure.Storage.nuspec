@@ -9,6 +9,7 @@
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <licenseUrl>https://github.com/Azure/azure-storage-net/blob/master/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/Azure/azure-storage-net</projectUrl>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
     <iconUrl>http://go.microsoft.com/fwlink/?LinkID=288890</iconUrl>
     <repository type="git" url="https://github.com/Azure/azure-storage-net.git" />
     <description>This client library enables working with the Microsoft Azure storage services which include the blob and file service for storing binary and text data, the table service for storing structured non-relational data, and the queue service for storing messages that may be accessed by a client.
